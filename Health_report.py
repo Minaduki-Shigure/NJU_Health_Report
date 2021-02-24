@@ -42,6 +42,7 @@ if authPage.status_code == 200:
     cookies.update(authCookie)
 
     # 调用BeautifulSoup分析网页，寻找下发的参数
+    # features可以修改成其他已经装好的包，如html-parser或html5lib
     soup = BeautifulSoup(authPage.text, features = 'lxml')
     saltElem = soup.select('#pwdDefaultEncryptSalt')
     ltElem = soup.find(name = 'input', attrs = {'name': 'lt'})
