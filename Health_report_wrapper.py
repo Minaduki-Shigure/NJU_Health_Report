@@ -8,8 +8,9 @@ from bs4 import BeautifulSoup
 
 EXIT_SUCCESS = 0
 AUTH_ERROR = 1
-REPORT_ERROR = 2
-REPORT_REJECTED = 3
+AUTH_FAILED = 2
+REPORT_ERROR = 3
+REPORT_REJECTED = 4
 
 def HealthReport(UserName, UserPass, UserLocation):
     # 如果需要，在这里修改打卡系统的终点URL，这三个URL分别是统一身份认证、获取打卡列表（其实没用上）、上报打卡信息的URL
@@ -85,6 +86,9 @@ def HealthReport(UserName, UserPass, UserLocation):
     # 第一次302的目标是ListURL（获取打卡列表），同时提供一个ticket参数（应该是用于打卡网站的鉴权），同时下发了几个Cookie（应该是用于统一认证）
     # 第二次302的目标也是ListURL（获取打卡列表），同时下发了几个cookie（应该是用于打卡网站）
     # 但是我懒得去区分那些是打卡必须的cookie，所以全存下来好了
+    if len(authPost.history) == 0:
+        # 没有跳转，证明统一认证出错了
+        return AUTH_FAILED, None
     reportCookie = requests.utils.dict_from_cookiejar(authPost.history[0].cookies)
     cookies.update(reportCookie)
     reportCookie = requests.utils.dict_from_cookiejar(authPost.history[1].cookies)
@@ -140,6 +144,8 @@ if __name__ == '__main__':
         returnMsg = '健康打卡成功！服务器回报：' + msg
     elif ret == AUTH_ERROR:
         returnMsg = '统一认证服务器连接失败！服务器回报：' + msg
+    elif ret == AUTH_FAILED:
+        returnMsg = '统一认证登陆失败！请检查凭据'
     elif ret == REPORT_ERROR:
         returnMsg = '打卡服务器连接失败！服务器回报：' + msg
     elif ret == REPORT_REJECTED:

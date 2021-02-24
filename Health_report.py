@@ -86,6 +86,11 @@ authPost = requests.post(url = AuthURL, cookies = cookies, data = authPostData)
 # 第一次302的目标是ListURL（获取打卡列表），同时提供一个ticket参数（应该是用于打卡网站的鉴权），同时下发了几个Cookie（应该是用于统一认证）
 # 第二次302的目标也是ListURL（获取打卡列表），同时下发了几个cookie（应该是用于打卡网站）
 # 但是我懒得去区分那些是打卡必须的cookie，所以全存下来好了
+if len(authPost.history) == 0:
+    # 没有跳转，证明统一认证出错了
+    print('\033[1;31;43mAuthentication Failed!\033[0m')
+    print('\033[1;31;43mFailed to report health status!\033[0m')
+    sys.exit()
 reportCookie = requests.utils.dict_from_cookiejar(authPost.history[0].cookies)
 cookies.update(reportCookie)
 reportCookie = requests.utils.dict_from_cookiejar(authPost.history[1].cookies)
