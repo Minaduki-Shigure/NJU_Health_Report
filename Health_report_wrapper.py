@@ -129,7 +129,6 @@ def HealthReport(UserName, UserPass, UserLocation):
         return REPORT_ERROR, reportPage.status_code
 
 if __name__ == '__main__':
-    
     UserName = sys.argv[1]
     UserPass = sys.argv[2]
     UserLocation = sys.argv[3]
@@ -154,4 +153,3 @@ if __name__ == '__main__':
         returnMsg = '发生了未知错误！'
 
     print(returnMsg)
- 
