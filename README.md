@@ -15,7 +15,11 @@
 ```plain
 $ python Health_report_wrapper.py <UserName> <UserPass> <UserLocation>
 ```
-之所以包了一层，是因为本身这个项目想做成iOS捷径（我的老SE在打卡界面定位巨慢），如果不用天天改打卡位置的话其实没必要用这个。   
+之所以包了一层，是因为本身这个项目想做成iOS捷径（我的老SE在打卡界面定位巨慢），如果不用天天改打卡位置的话其实没必要用这个。
+
+## 注意事项
+如果密码错误，统一认证可能会要求输入验证码，这个程序不能处理验证码，所以千万别输错。   
+如果输错了导致需要验证码，可以手动打开浏览器登陆一下统一认证，一般可以解决。
 
 ## 鸣谢
 感谢[@StellarDragon](https://github.com/StellarDragon)大佬提供的灵感：[nju-health-report](https://github.com/StellarDragon/nju-health-report)
