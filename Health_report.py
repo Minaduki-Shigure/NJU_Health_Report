@@ -1,3 +1,5 @@
+# -*- coding: UTF-8 -*-
+
 import sys
 import json
 
@@ -22,6 +24,25 @@ ReportURL = 'http://ehallapp.nju.edu.cn/xgfw/sys/yqfxmrjkdkappnju/apply/saveAppl
 # 也许学校会更换这个文件导致程序失效，所以把路径放在这里
 # 不过如果真换了估计整个流程也都不一样了
 EncryptJS = './encrypt.js'
+
+# 模仿南京大学APP的请求头
+authHeaders = {
+    'Accept': 'application/json, text/plain, */*',
+    'Connection': 'keep-alive',
+    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_3_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 (4473068032)cpdaily/9.0.14  wisedu/9.0.14',
+    'Accept-Language': 'zh-CN,zh-Hans;q=0.9',
+    'Accept-Encoding': 'gzip, deflate'
+}
+
+reportHeaders = {
+    'Host': 'ehallapp.nju.edu.cn',
+    'Accept': 'application/json, text/plain, */*',
+    'Connection': 'keep-alive',
+    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_3_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 (4473068032)cpdaily/9.0.14  wisedu/9.0.14',
+    'Accept-Language': 'zh-CN,zh-Hans;q=0.9',
+    'Referer': 'http://ehallapp.nju.edu.cn/xgfw/sys/mrjkdkappnju/index.html',
+    'Accept-Encoding': 'gzip, deflate'
+}
 
 # 存储打卡过程中下发的的所有cookie
 cookies = {}
@@ -81,7 +102,7 @@ authPostData = {
 }
 
 # 发送POST请求进行登陆
-authPost = requests.post(url = AuthURL, cookies = cookies, data = authPostData)
+authPost = requests.post(url = AuthURL, headers = authHeaders, cookies = cookies, data = authPostData)
 
 # 发出请求会经历两次302跳转
 # 第一次302的目标是ListURL（获取打卡列表），同时提供一个ticket参数（应该是用于打卡网站的鉴权），同时下发了几个Cookie（应该是用于统一认证）
@@ -113,7 +134,7 @@ reportData = {          # 建议把参数名称装裱成书，永世传唱
 }
 
 # 上报打卡信息
-reportPage = requests.get(ReportURL, cookies = cookies, params = reportData)
+reportPage = requests.get(ReportURL, headers = reportHeaders, cookies = cookies, params = reportData)
 
 if reportPage.status_code == 200:
     reportStatus = json.loads(reportPage.text)
