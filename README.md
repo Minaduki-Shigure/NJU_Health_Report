@@ -7,14 +7,16 @@
 
 ## 使用方法
 1. 运行`pip install -r requirements.txt`，自动安装需要的modules（或者自行手动安装）
-2. 修改`Health_report.py`中`UserName`、`UserPass`和`UserLocation`三个变量为对应值。
+2. 修改`Health_report.py`中`UserName`、`UserPass`、`UserLocation`和`UserLastPCR`四个变量为对应值。
 3. 运行程序。
 
 ## 关于`Health_report_wrapper.py`
 这个脚本和上一个的区别就是加了个main函数，从输入参数中获取变量的值，用法：
 ```plain
-$ python Health_report_wrapper.py <UserName> <UserPass> <UserLocation>
+$ python Health_report_wrapper.py <UserName> <UserPass> <UserLocation> <UserLastPCR>
 ```
+UserLastPCR这个参数由于带有空格，需要使用\转义，比如`2022-4-11 14`应该写成`2022-4-11\ 14`。
+
 之所以包了一层，是因为本身这个项目想做成iOS捷径（我的老SE在打卡界面定位巨慢），如果不用天天改打卡位置的话其实没必要用这个。
 
 ## 注意事项
