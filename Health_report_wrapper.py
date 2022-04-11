@@ -14,7 +14,7 @@ AUTH_FAILED = 2
 REPORT_ERROR = 3
 REPORT_REJECTED = 4
 
-def HealthReport(UserName, UserPass, UserLocation):
+def HealthReport(UserName, UserPass, UserLocation, UserLastPCR):
     # 如果需要，在这里修改打卡系统的终点URL，这三个URL分别是统一身份认证、获取打卡列表（其实没用上）、上报打卡信息的URL
     AuthURL = 'https://authserver.nju.edu.cn/authserver/login?service=https%3A%2F%2Fehallapp.nju.edu.cn%3A443%2Fxgfw%2Fsys%2Fyqfxmrjkdkappnju%2Fapply%2FgetApplyInfoList.do'
     ListURL = 'http://ehallapp.nju.edu.cn/xgfw/sys/yqfxmrjkdkappnju/apply/getApplyInfoList.do'
@@ -31,7 +31,7 @@ def HealthReport(UserName, UserPass, UserLocation):
     authHeaders = {
         'Accept': 'application/json, text/plain, */*',
         'Connection': 'keep-alive',
-        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_3_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 (4473068032)cpdaily/9.0.14  wisedu/9.0.14',
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 (4412504576)cpdaily/9.0.14  wisedu/9.0.14',
         'Accept-Language': 'zh-CN,zh-Hans;q=0.9',
         'Accept-Encoding': 'gzip, deflate'
     }
@@ -40,7 +40,7 @@ def HealthReport(UserName, UserPass, UserLocation):
         'Host': 'ehallapp.nju.edu.cn',
         'Accept': 'application/json, text/plain, */*',
         'Connection': 'keep-alive',
-        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_3_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 (4473068032)cpdaily/9.0.14  wisedu/9.0.14',
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 (4412504576)cpdaily/9.0.14  wisedu/9.0.14',
         'Accept-Language': 'zh-CN,zh-Hans;q=0.9',
         'Referer': 'http://ehallapp.nju.edu.cn/xgfw/sys/mrjkdkappnju/index.html',
         'Accept-Encoding': 'gzip, deflate'
@@ -128,7 +128,10 @@ def HealthReport(UserName, UserPass, UserLocation):
         'IS_TWZC': '1',     # 体温正常
         'IS_HAS_JKQK': '1', # 健康情况正常
         'JRSKMYS': '1',     # 今日苏康码颜色
-        'JZRJRSKMYS': '1'   # 居住人今日苏康码颜色
+        'JZRJRSKMYS': '1',  # 居住人今日苏康码颜色
+        # 2022-4-10新增了两个字段
+        'SFZJLN': '0',      # 是否最近离宁
+        'ZJHSJCSJ': UserLastPCR # 最近核算检测时间
     }
 
     # 上报打卡信息
@@ -154,11 +157,13 @@ if __name__ == '__main__':
     UserName = sys.argv[1]
     UserPass = sys.argv[2]
     UserLocation = sys.argv[3]
+    UserLastPCR = sys.argv[4]
 
     ret, msg = HealthReport(
         UserName = UserName,
         UserPass = UserPass,
-        UserLocation = UserLocation
+        UserLocation = UserLocation,
+        UserLastPCR = UserLastPCR
     )
 
     if ret == EXIT_SUCCESS:
