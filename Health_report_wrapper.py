@@ -4,9 +4,6 @@ import sys
 import json
 
 import requests
-import js2py
-
-from bs4 import BeautifulSoup
 
 EXIT_SUCCESS = 0
 AUTH_ERROR = 1
@@ -14,18 +11,11 @@ AUTH_FAILED = 2
 REPORT_ERROR = 3
 REPORT_REJECTED = 4
 
-def HealthReport(UserName, UserPass, UserLocation, UserLastPCR):
+def HealthReport(UserAuthCookie, UserLocation, UserLastPCR):
     # 如果需要，在这里修改打卡系统的终点URL，这三个URL分别是统一身份认证、获取打卡列表（其实没用上）、上报打卡信息的URL
     AuthURL = 'https://authserver.nju.edu.cn/authserver/login?service=https%3A%2F%2Fehallapp.nju.edu.cn%3A443%2Fxgfw%2Fsys%2Fyqfxmrjkdkappnju%2Fapply%2FgetApplyInfoList.do'
     ListURL = 'http://ehallapp.nju.edu.cn/xgfw/sys/yqfxmrjkdkappnju/apply/getApplyInfoList.do'
     ReportURL = 'http://ehallapp.nju.edu.cn/xgfw/sys/yqfxmrjkdkappnju/apply/saveApplyInfos.do'
-
-    # 统一认证系统使用这个文件中的encryptAES函数对输入密码进行加盐处理
-    # 由于没学过密码学，只能照搬js文件
-    # js文件路径为https://authserver.nju.edu.cn/authserver/custom/js/encrypt.js
-    # 也许学校会更换这个文件导致程序失效，所以把路径放在这里
-    # 不过如果真换了估计整个流程也都不一样了
-    EncryptJS = './encrypt.js'
 
     # 模仿南京大学APP的请求头
     authHeaders = {
@@ -47,79 +37,30 @@ def HealthReport(UserName, UserPass, UserLocation, UserLastPCR):
     }
 
     # 存储打卡过程中下发的的所有cookie
-    cookies = {}
-
-    # 打开统一认证
-    # 统一认证的网页会下发以下几个参数：
-    # pwdDefaultEncryptSalt: 用于给输入的密码加盐
-    # lt: 一串LT开头的字符串，需要回报给服务器，可能是用于区分会话
-    # dllt: 似乎用于区分登陆方式使用的是密码/验证码/微信扫码
-    # execcution: 未知，似乎只有'e1s1'和'e2s1'两种
-    # _eventId: 似乎是用于确定点击按钮后触发事件的ID？为啥要上报这个？我没学过JS，希望有大佬指正
-    # rmShown: 未知
-    # 如果密码输错了，就会要求输入验证码，这个程序不能处理验证码，所以千万别输错
-    authPage = requests.get(url = AuthURL)
-    if authPage.status_code == 200:
-        # 更新cookie
-        authCookie = requests.utils.dict_from_cookiejar(authPage.cookies)
-        cookies.update(authCookie)
-
-        # 调用BeautifulSoup分析网页，寻找下发的参数
-        # features可以修改成其他已经装好的包，如html-parser或html5lib
-        soup = BeautifulSoup(authPage.text, features = 'lxml')
-        saltElem = soup.select('#pwdDefaultEncryptSalt')
-        ltElem = soup.find(name = 'input', attrs = {'name': 'lt'})
-        executionElem = soup.find(name = 'input', attrs = {'name': 'execution'})
-        eventIdElem = soup.find(name = 'input', attrs = {'name': '_eventId'})
-        rmShownElem = soup.find(name = 'input', attrs = {'name': 'rmShown'})
-
-        # 从找到的参数中提取值
-        salt = saltElem[0].attrs['value']
-        lt = ltElem.attrs['value']
-        execution = executionElem.attrs['value']
-        eventId = eventIdElem.attrs['value']
-        rmShown = rmShownElem.attrs['value']
-
-        # 使用js2py调用统一认证的encrypt.js完成对密码的加盐操作
-        jsContext = js2py.EvalJs()
-        jsContext.execute(open(EncryptJS).read())
-        encryptedPass = jsContext.encryptAES(UserPass, salt)
-    else:
-        # 如果统一认证返回的状态码不是200，则panic
-        return AUTH_ERROR, authPage.status_code
-
-    # 回报给统一认证的登陆凭据
-    # 其中dllt字段直接指定为'userNamePasswordLogin'即使用账号密码登陆
-    # 其余字段按照下发的内容回报
-    authPostData = {
-        'username': UserName,
-        'password': encryptedPass,
-        'lt': lt,
-        'dllt': 'userNamePasswordLogin',
-        'execution': execution,
-        '_eventId': eventId,
-        'rmShown': rmShown
+    cookies = {
+        'CASTGC': UserAuthCookie # 统一认证下发的长效令牌
     }
 
-    # 发送POST请求进行登陆
-    authPost = requests.post(url = AuthURL, headers = authHeaders, cookies = cookies, data = authPostData)
+    # 打开统一认证
+    authRequest = requests.get(url = AuthURL, headers = authHeaders, cookies = cookies)
+    authCookie = requests.utils.dict_from_cookiejar(authRequest.cookies)
+    cookies.update(authCookie)
 
     # 发出请求会经历两次302跳转
-    # 第一次302的目标是ListURL（获取打卡列表），同时提供一个ticket参数（应该是用于打卡网站的鉴权），同时下发了几个Cookie（应该是用于统一认证）
-    # 第二次302的目标也是ListURL（获取打卡列表），同时下发了几个cookie（应该是用于打卡网站）
-    # 但是我懒得去区分那些是打卡必须的cookie，所以全存下来好了
-    if len(authPost.history) == 0:
+    # 第一次302的目标是ListURL（获取打卡列表）
+    # 第二次302的目标也是ListURL（获取打卡列表），同时下发了一个短期令牌MOD_AUTH_CAS
+    if len(authRequest.history) == 0:
         # 没有跳转，证明统一认证出错了
         return AUTH_FAILED, None
-    reportCookie = requests.utils.dict_from_cookiejar(authPost.history[0].cookies)
+    reportCookie = requests.utils.dict_from_cookiejar(authRequest.history[0].cookies)
     cookies.update(reportCookie)
-    reportCookie = requests.utils.dict_from_cookiejar(authPost.history[1].cookies)
+    reportCookie = requests.utils.dict_from_cookiejar(authRequest.history[1].cookies)
     cookies.update(reportCookie)
-    reportCookie = requests.utils.dict_from_cookiejar(authPost.cookies)
+    reportCookie = requests.utils.dict_from_cookiejar(authRequest.cookies)
     cookies.update(reportCookie)
 
     # 从打卡列表中获取今天（第0项）打卡对应的WID参数
-    WID = json.loads(authPost.text)['data'][0]['WID']
+    WID = json.loads(authRequest.text)['data'][0]['WID']
 
     # 打卡信息
     reportData = {          # 建议把参数名称装裱成书，永世传唱
@@ -131,7 +72,7 @@ def HealthReport(UserName, UserPass, UserLocation, UserLastPCR):
         'JZRJRSKMYS': '1',  # 居住人今日苏康码颜色
         # 2022-4-10新增了两个字段
         'SFZJLN': '0',      # 是否最近离宁
-        'ZJHSJCSJ': UserLastPCR # 最近核算检测时间
+        'ZJHSJCSJ': UserLastPCR # 最近核酸检测时间
     }
 
     # 上报打卡信息
@@ -154,14 +95,12 @@ def HealthReport(UserName, UserPass, UserLocation, UserLastPCR):
         return REPORT_ERROR, reportPage.status_code
 
 if __name__ == '__main__':
-    UserName = sys.argv[1]
-    UserPass = sys.argv[2]
-    UserLocation = sys.argv[3]
-    UserLastPCR = sys.argv[4]
+    UserAuthCookie = sys.argv[1]
+    UserLocation = sys.argv[2]
+    UserLastPCR = sys.argv[3]
 
     ret, msg = HealthReport(
-        UserName = UserName,
-        UserPass = UserPass,
+        UserAuthCookie = UserAuthCookie,
         UserLocation = UserLocation,
         UserLastPCR = UserLastPCR
     )
