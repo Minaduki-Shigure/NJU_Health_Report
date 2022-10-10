@@ -68,19 +68,20 @@ def HealthReport(UserAuthCookie, UserLocation, UserLastPCR):
     # 发出请求会经历四次302跳转
     # 前三次302的目标是统一身份认证，并通过长效Cookie获取短期令牌
     # 最后一次302的目标也是ListURL（获取打卡列表），同时下发了一个短期令牌MOD_AUTH_CAS
-    if len(indexRequest.history) == 0:
-        #没有跳转，证明认证出错了
+    try:
+        reportCookie = requests.utils.dict_from_cookiejar(indexRequest.history[3].cookies)
+        cookies.update(reportCookie)
+        reportCookie = requests.utils.dict_from_cookiejar(indexRequest.history[2].cookies)
+        cookies.update(reportCookie)
+        reportCookie = requests.utils.dict_from_cookiejar(indexRequest.history[1].cookies)
+        cookies.update(reportCookie)    
+        reportCookie = requests.utils.dict_from_cookiejar(indexRequest.history[0].cookies)
+        cookies.update(reportCookie)
+        reportCookie = requests.utils.dict_from_cookiejar(indexRequest.cookies)
+        cookies.update(reportCookie)
+    except Exception as e:
+        # 没有跳转，证明认证出错了
         return AUTH_FAILED, None
-    reportCookie = requests.utils.dict_from_cookiejar(indexRequest.history[3].cookies)
-    cookies.update(reportCookie)
-    reportCookie = requests.utils.dict_from_cookiejar(indexRequest.history[2].cookies)
-    cookies.update(reportCookie)
-    reportCookie = requests.utils.dict_from_cookiejar(indexRequest.history[1].cookies)
-    cookies.update(reportCookie)    
-    reportCookie = requests.utils.dict_from_cookiejar(indexRequest.history[0].cookies)
-    cookies.update(reportCookie)
-    reportCookie = requests.utils.dict_from_cookiejar(indexRequest.cookies)
-    cookies.update(reportCookie)
 
     # 使用短期令牌请求打卡列表
     listRequest = requests.get(url = ListURL, headers = reportHeaders, cookies = cookies)
