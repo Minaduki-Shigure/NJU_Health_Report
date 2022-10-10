@@ -14,23 +14,25 @@ REPORT_REJECTED = 4
 def HealthReport(UserAuthCookie, UserLocation, UserLastPCR):
     # 如果需要，在这里修改打卡系统的终点URL，这三个URL分别是统一身份认证、获取打卡列表（其实没用上）、上报打卡信息的URL
     AuthURL = 'https://authserver.nju.edu.cn/authserver/login?service=https%3A%2F%2Fehallapp.nju.edu.cn%3A443%2Fxgfw%2Fsys%2Fyqfxmrjkdkappnju%2Fapply%2FgetApplyInfoList.do'
+    IndexURL = 'http://ehallapp.nju.edu.cn/xgfw/sys/mrjkdkappnju/index.do'
     ListURL = 'http://ehallapp.nju.edu.cn/xgfw/sys/yqfxmrjkdkappnju/apply/getApplyInfoList.do'
     ReportURL = 'http://ehallapp.nju.edu.cn/xgfw/sys/yqfxmrjkdkappnju/apply/saveApplyInfos.do'
 
     # 模仿南京大学APP的请求头
     authHeaders = {
-        'Accept': 'application/json, text/plain, */*',
-        'Connection': 'keep-alive',
-        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 (4412504576)cpdaily/9.0.14  wisedu/9.0.14',
-        'Accept-Language': 'zh-CN,zh-Hans;q=0.9',
-        'Accept-Encoding': 'gzip, deflate'
+    'Accept': 'application/json, text/plain, */*',
+    'Connection': 'keep-alive',
+    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 (4420986880)cpdaily/9.0.14  wisedu/9.0.14',
+    'Accept-Language': 'zh-CN,zh-Hans;q=0.9',
+    'Accept-Encoding': 'gzip, deflate'
     }
 
     reportHeaders = {
-        'Host': 'ehallapp.nju.edu.cn',
+        #'Host': 'ehallapp.nju.edu.cn',
         'Accept': 'application/json, text/plain, */*',
         'Connection': 'keep-alive',
-        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 (4412504576)cpdaily/9.0.14  wisedu/9.0.14',
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 (4420986880)cpdaily/9.0.14  wisedu/9.0.14',
+        "X-Requested-With": "com.wisedu.cpdaily.nju",
         'Accept-Language': 'zh-CN,zh-Hans;q=0.9',
         'Referer': 'http://ehallapp.nju.edu.cn/xgfw/sys/mrjkdkappnju/index.html',
         'Accept-Encoding': 'gzip, deflate'
@@ -42,25 +44,50 @@ def HealthReport(UserAuthCookie, UserLocation, UserLastPCR):
     }
 
     # 打开统一认证
-    authRequest = requests.get(url = AuthURL, headers = authHeaders, cookies = cookies)
-    authCookie = requests.utils.dict_from_cookiejar(authRequest.cookies)
-    cookies.update(authCookie)
+    #authRequest = requests.get(url = AuthURL, headers = authHeaders, cookies = cookies)
+    #authCookie = requests.utils.dict_from_cookiejar(authRequest.cookies)
+    #cookies.update(authCookie)
 
     # 发出请求会经历两次302跳转
     # 第一次302的目标是ListURL（获取打卡列表）
     # 第二次302的目标也是ListURL（获取打卡列表），同时下发了一个短期令牌MOD_AUTH_CAS
-    if len(authRequest.history) == 0:
+    #if len(authRequest.history) == 0:
         # 没有跳转，证明统一认证出错了
+        #return AUTH_FAILED, None
+    #reportCookie = requests.utils.dict_from_cookiejar(authRequest.history[0].cookies)
+    #cookies.update(reportCookie)
+    #reportCookie = requests.utils.dict_from_cookiejar(authRequest.history[1].cookies)
+    #cookies.update(reportCookie)
+    #reportCookie = requests.utils.dict_from_cookiejar(authRequest.cookies)
+    #cookies.update(reportCookie)
+
+    # 打开打卡入口
+    indexRequest = requests.get(url = IndexURL, headers = reportHeaders, cookies = cookies)
+
+    # 2022-10-10更新
+    # 发出请求会经历四次302跳转
+    # 前三次302的目标是统一身份认证，并通过长效Cookie获取短期令牌
+    # 最后一次302的目标也是ListURL（获取打卡列表），同时下发了一个短期令牌MOD_AUTH_CAS
+    if len(indexRequest.history) == 0:
+        #没有跳转，证明认证出错了
         return AUTH_FAILED, None
-    reportCookie = requests.utils.dict_from_cookiejar(authRequest.history[0].cookies)
+    reportCookie = requests.utils.dict_from_cookiejar(indexRequest.history[3].cookies)
     cookies.update(reportCookie)
-    reportCookie = requests.utils.dict_from_cookiejar(authRequest.history[1].cookies)
+    reportCookie = requests.utils.dict_from_cookiejar(indexRequest.history[2].cookies)
     cookies.update(reportCookie)
-    reportCookie = requests.utils.dict_from_cookiejar(authRequest.cookies)
+    reportCookie = requests.utils.dict_from_cookiejar(indexRequest.history[1].cookies)
+    cookies.update(reportCookie)    
+    reportCookie = requests.utils.dict_from_cookiejar(indexRequest.history[0].cookies)
+    cookies.update(reportCookie)
+    reportCookie = requests.utils.dict_from_cookiejar(indexRequest.cookies)
     cookies.update(reportCookie)
 
+    # 使用短期令牌请求打卡列表
+    listRequest = requests.get(url = ListURL, headers = reportHeaders, cookies = cookies)
+
+
     # 从打卡列表中获取今天（第0项）打卡对应的WID参数
-    WID = json.loads(authRequest.text)['data'][0]['WID']
+    WID = json.loads(listRequest.text)['data'][0]['WID']
 
     # 打卡信息
     reportData = {          # 建议把参数名称装裱成书，永世传唱
